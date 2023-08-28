@@ -3,13 +3,14 @@ require 'json'
 module Schmooze
   class ProcessorGenerator
     class << self
-      def generate(imports, methods)
+      def generate(imports, methods, es6: false)
 %{try {
-#{imports.map {|import| generate_import(import)}.join}} catch (e) {
+#{imports.map {|import| generate_import(import, es6: es6)}.join}} catch (e) {
   process.stdout.write(JSON.stringify(['err', e.toString()]));
   process.stdout.write("\\n");
   process.exit(1);
 }
+
 process.stdout.write("[\\"ok\\"]\\n");
 var __methods__ = {};
 #{methods.map{ |method| generate_method(method[:name], method[:code]) }.join}
@@ -21,7 +22,7 @@ function __handle_error__(error) {
   }
   process.stdout.write("\\n");
 }
-require('readline').createInterface({
+#{generate_readline_import(es6: es6)}.createInterface({
   input: process.stdin,
   terminal: false,
 }).on('line', function(line) {
@@ -43,14 +44,27 @@ require('readline').createInterface({
         "__methods__[#{name.to_json}] = (#{code});\n"
       end
 
-      def generate_import(import)
+      def generate_import(import, es6:)
         if import[:package].start_with?('.') # if it local script else package
           _, _, package, mid, path = import[:package].partition('.')
-          package = '.' + package
+          package = ".#{package}"
         else
           package, mid, path = import[:package].partition('.')
         end
-        "  var #{import[:identifier]} = require(#{package.to_json})#{mid}#{path};\n"
+
+        "  var #{import[:identifier]} = #{import(package, es6: es6)}#{mid}#{path};\n"
+      end
+
+      def generate_readline_import(es6:)
+        import('readline', es6: es6)
+      end
+
+      def import(package, es6:)
+        if es6
+          "(await import(#{package.to_json}))"
+        else
+          "require(#{package.to_json})"
+        end
       end
     end
   end

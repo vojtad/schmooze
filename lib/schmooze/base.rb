@@ -49,10 +49,15 @@ module Schmooze
         end
     end
 
-    def initialize(root, env={})
+    def initialize(root, env = {}, es6: false)
       @_schmooze_env = env
       @_schmooze_root = root
-      @_schmooze_code = ProcessorGenerator.generate(self.class.instance_variable_get(:@_schmooze_imports) || [], self.class.instance_variable_get(:@_schmooze_methods) || [])
+      @_schmooze_es6 = es6
+      @_schmooze_code = ProcessorGenerator.generate(
+        self.class.instance_variable_get(:@_schmooze_imports) || [],
+        self.class.instance_variable_get(:@_schmooze_methods) || [],
+        es6: @_schmooze_es6
+      )
     end
 
     def pid
@@ -73,13 +78,17 @@ module Schmooze
       end
 
       def spawn_process
+        cmd = [@_schmooze_env, 'node']
+        cmd << '--input-type=module' if @_schmooze_es6
+        cmd << '--es-module-specifier-resolution=node' if @_schmooze_es6
+        
         process_data = Open3.popen3(
-          @_schmooze_env,
-          'node',
+          *cmd,
           '-e',
           @_schmooze_code,
           chdir: @_schmooze_root
         )
+        
         ensure_packages_are_initiated(*process_data)
         ObjectSpace.define_finalizer(self, self.class.send(:finalize, Process.pid, *process_data))
         @_schmooze_stdin, @_schmooze_stdout, @_schmooze_stderr, @_schmooze_process_thread = process_data
