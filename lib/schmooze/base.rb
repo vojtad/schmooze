@@ -131,15 +131,15 @@ module Schmooze
         input = @_schmooze_stdout.gets
         raise Errno::EPIPE, "Can't read from stdout" if input.nil?
 
-        status, message, error_class = JSON.parse(input)
+        status, message, error_class, error_stack = JSON.parse(input)
 
         if status == 'ok'
           message
         else
           if error_class.nil?
-            raise Schmooze::JavaScript::UnknownError, message
+            raise Schmooze::JavaScript::UnknownError, [message, error_stack].compact.join("\n")
           else
-            raise Schmooze::JavaScript.const_get(error_class, false), message
+            raise Schmooze::JavaScript.const_get(error_class, false), [message, error_stack].compact.join("\n")
           end
         end
       rescue Errno::EPIPE, IOError

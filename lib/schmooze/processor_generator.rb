@@ -16,7 +16,7 @@ var __methods__ = {};
 #{methods.map{ |method| generate_method(method[:name], method[:code]) }.join}
 function __handle_error__(error) {
   if (error instanceof Error) {
-    process.stdout.write(JSON.stringify(['err', error.toString().replace(new RegExp('^' + error.name + ': '), ''), error.name]));
+    process.stdout.write(JSON.stringify(['err', error.toString().replace(new RegExp('^' + error.name + ': '), ''), error.name, error.stack]));
   } else {
     process.stdout.write(JSON.stringify(['err', error.toString()]));
   }
